@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { parseCSV } from '@/lib/csv-parser';
 import { parseRangeValue } from '@/lib/range';
+import { Moon, Sun, Folder, Play } from 'lucide-react';
 
 interface WorkoutEditorProps {
   workout: Workout;
@@ -123,10 +124,10 @@ export function WorkoutEditor({
             onClick={onToggleTheme}
             variant="outline"
             size="lg"
-            className="text-2xl py-6 px-4"
+            className="py-6 px-4"
             title={theme === 'light' ? 'Attiva tema scuro' : 'Attiva tema chiaro'}
           >
-            {theme === 'light' ? '🌙' : '☀️'}
+            {theme === 'light' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
           </Button>
         </div>
       </header>
@@ -155,7 +156,7 @@ export function WorkoutEditor({
               size="lg"
               className="text-lg py-6 px-6"
             >
-              📁 Importa CSV
+              <Folder className="w-5 h-5 mr-2" /> Importa CSV
             </Button>
             <input
               ref={fileInputRef}
@@ -248,7 +249,7 @@ export function WorkoutEditor({
             className="flex-1 text-lg py-6"
             disabled={workout.exercises.length === 0}
           >
-            ▶ Avvia
+            <Play className="w-5 h-5 mr-2" /> Avvia
           </Button>
         </div>
       </footer>

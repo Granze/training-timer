@@ -3,6 +3,7 @@ import { Workout, Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useTimer } from '@/hooks/useTimer';
 import { getDefaultRangeValue } from '@/lib/range';
+import { X, Trophy, Play, Check, Pause } from 'lucide-react';
 
 type PlayerPhase = 'exercise' | 'work-timer' | 'rest-series' | 'rest-exercise' | 'complete';
 
@@ -161,7 +162,7 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          <div className="text-6xl mb-6">🎉</div>
+          <div className="text-6xl mb-6"><Trophy className="w-24 h-24 mx-auto" /></div>
           <h1 className="text-4xl font-bold mb-4">Workout Completato!</h1>
           <p className="text-xl text-muted-foreground mb-8">
             {workout.name}
@@ -180,7 +181,7 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
       <header className="p-4 border-b">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Button onClick={onBack} variant="outline" size="lg" className="py-6">
-            ✕ Esci
+            <X className="w-5 h-5 mr-2" /> Esci
           </Button>
           <div className="text-right">
             <div className="text-sm text-muted-foreground">
@@ -258,7 +259,7 @@ function ExerciseDisplay({ exercise, currentSeries, totalSeries, onDone }: Exerc
         size="lg"
         className="w-full text-2xl py-10 px-8 rounded-2xl"
       >
-        {isTimed ? '▶ INIZIA' : '✓ FATTO'}
+        {isTimed ? <><Play className="w-6 h-6 mr-2" /> INIZIA</> : <><Check className="w-6 h-6 mr-2" /> FATTO</>}
       </Button>
     </div>
   );
@@ -385,7 +386,7 @@ function TimerDisplay({
           className="flex-1 text-lg py-6"
           disabled={!isRunning}
         >
-          {isPaused ? '▶ Riprendi' : '⏸ Pausa'}
+          {isPaused ? <><Play className="w-5 h-5 mr-2" /> Riprendi</> : <><Pause className="w-5 h-5 mr-2" /> Pausa</>}
         </Button>
       </div>
     </div>

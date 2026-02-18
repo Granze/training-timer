@@ -3,6 +3,7 @@ import { Theme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Moon, Sun, Play, Trash2 } from 'lucide-react';
 
 interface WorkoutListProps {
   workouts: Workout[];
@@ -37,16 +38,16 @@ export function WorkoutList({
       {/* Header */}
       <header className="p-4 sm:p-6 border-b">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold">Training Timer</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: '"Bungee Shade", cursive' }}>Training Timer</h1>
           <div className="flex items-center gap-2">
             <Button
               onClick={onToggleTheme}
               variant="outline"
               size="lg"
-              className="text-2xl py-6 px-4"
+              className="py-6 px-4"
               title={theme === 'light' ? 'Attiva tema scuro' : 'Attiva tema chiaro'}
             >
-              {theme === 'light' ? '🌙' : '☀️'}
+              {theme === 'light' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
             </Button>
             <Button
               onClick={onNewWorkout}
@@ -93,7 +94,7 @@ export function WorkoutList({
                           size="lg"
                           className="flex-1 min-w-[120px] text-lg py-6"
                         >
-                          ▶ Avvia
+                          <Play className="w-5 h-5 mr-2" /> Avvia
                         </Button>
                         <Button
                           onClick={() => onEditWorkout(workout)}
@@ -109,7 +110,7 @@ export function WorkoutList({
                           size="lg"
                           className="text-lg py-6 px-6"
                         >
-                          🗑
+                          <Trash2 className="w-5 h-5" />
                         </Button>
                       </div>
                     </CardContent>
