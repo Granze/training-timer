@@ -93,6 +93,8 @@ export function WorkoutList({
                           onClick={() => onStartWorkout(workout)}
                           size="lg"
                           className="flex-1 min-w-[120px] text-lg py-6"
+                          disabled={workout.exercises.length === 0}
+                          title={workout.exercises.length === 0 ? 'Aggiungi almeno un esercizio per avviare' : undefined}
                         >
                           <Play className="w-5 h-5 mr-2" /> Avvia
                         </Button>
@@ -105,7 +107,11 @@ export function WorkoutList({
                           Modifica
                         </Button>
                         <Button
-                          onClick={() => onDeleteWorkout(workout.id)}
+                          onClick={() => {
+                            if (window.confirm(`Eliminare il workout "${workout.name}"?`)) {
+                              onDeleteWorkout(workout.id);
+                            }
+                          }}
                           variant="destructive"
                           size="lg"
                           className="text-lg py-6 px-6"
