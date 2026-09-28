@@ -12,37 +12,48 @@ export function useTimer(options: UseTimerOptions = {}) {
   const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const remainingRef = useRef<number>(0);
+  const optionsRef = useRef(options);
+
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   const clearTimer = useCallback(() => {
-    if (intervalRef.current) {
+    if (intervalRef.current !== null) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
   }, []);
 
-  const start = useCallback((seconds: number) => {
-    clearTimer();
-    setTime(seconds);
-    remainingRef.current = seconds;
+  const startInterval = useCallback((duration: number) => {
     startTimeRef.current = Date.now();
-    setIsRunning(true);
-    setIsPaused(false);
 
     intervalRef.current = window.setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      const remaining = Math.max(0, seconds - elapsed);
-      
-      setTime(remaining);
-      remainingRef.current = remaining;
-      options.onTick?.(remaining);
+      const remaining = Math.max(0, duration - elapsed);
+
+      if (remaining !== remainingRef.current) {
+        remainingRef.current = remaining;
+        setTime(remaining);
+        optionsRef.current.onTick?.(remaining);
+      }
 
       if (remaining <= 0) {
         clearTimer();
         setIsRunning(false);
-        options.onComplete?.();
+        optionsRef.current.onComplete?.();
       }
     }, 100);
-  }, [clearTimer, options]);
+  }, [clearTimer]);
+
+  const start = useCallback((seconds: number) => {
+    clearTimer();
+    remainingRef.current = seconds;
+    setTime(seconds);
+    setIsRunning(true);
+    setIsPaused(false);
+    startInterval(seconds);
+  }, [clearTimer, startInterval]);
 
   const pause = useCallback(() => {
     if (isRunning && !isPaused) {
@@ -53,30 +64,14 @@ export function useTimer(options: UseTimerOptions = {}) {
 
   const resume = useCallback(() => {
     if (isRunning && isPaused) {
-      startTimeRef.current = Date.now();
-      const remaining = remainingRef.current;
-      
-      intervalRef.current = window.setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        const newRemaining = Math.max(0, remaining - elapsed);
-        
-        setTime(newRemaining);
-        remainingRef.current = newRemaining;
-        options.onTick?.(newRemaining);
-
-        if (newRemaining <= 0) {
-          clearTimer();
-          setIsRunning(false);
-          options.onComplete?.();
-        }
-      }, 100);
-      
+      startInterval(remainingRef.current);
       setIsPaused(false);
     }
-  }, [isRunning, isPaused, clearTimer, options]);
+  }, [isRunning, isPaused, startInterval]);
 
   const stop = useCallback(() => {
     clearTimer();
+    remainingRef.current = 0;
     setTime(0);
     setIsRunning(false);
     setIsPaused(false);
@@ -84,6 +79,7 @@ export function useTimer(options: UseTimerOptions = {}) {
 
   const skip = useCallback(() => {
     clearTimer();
+    remainingRef.current = 0;
     setIsRunning(false);
     setTime(0);
   }, [clearTimer]);
