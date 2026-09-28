@@ -32,6 +32,7 @@ export function WorkoutEditor({
 }: WorkoutEditorProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [csvError, setCsvError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleNameChange = (name: string) => {
@@ -57,10 +58,11 @@ export function WorkoutEditor({
     setEditingExercise(null);
   };
 
-  const handleDeleteExercise = (id: string) => {
+  const handleDeleteExercise = (exercise: Exercise) => {
+    if (!window.confirm(`Eliminare l'esercizio "${exercise.name}"?`)) return;
     onUpdate({
       ...workout,
-      exercises: workout.exercises.filter((e) => e.id !== id),
+      exercises: workout.exercises.filter((e) => e.id !== exercise.id),
     });
   };
 
@@ -68,6 +70,7 @@ export function WorkoutEditor({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setCsvError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -79,31 +82,37 @@ export function WorkoutEditor({
         });
       } catch (error) {
         console.error('Failed to parse CSV:', error);
-        alert('Errore nel parsing del CSV. Controlla il formato.');
+        setCsvError(error instanceof Error
+          ? `Errore nel parsing del CSV: ${error.message}`
+          : 'Errore nel parsing del CSV. Controlla il formato.');
       }
     };
+    reader.onerror = () => {
+      setCsvError('Impossibile leggere il file selezionato.');
+    };
     reader.readAsText(file);
-    
+
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  const buildUpdatedWorkout = (): Workout => ({
+    ...workout,
+    name: workout.name.trim() || 'Workout senza nome',
+    updatedAt: new Date().toISOString(),
+  });
+
   const handleSave = () => {
-    const updated = {
-      ...workout,
-      updatedAt: new Date().toISOString(),
-    };
-    onSave(updated);
+    onSave(buildUpdatedWorkout());
   };
 
   const handleStart = () => {
-    if (workout.exercises.length === 0) {
-      alert('Aggiungi almeno un esercizio prima di iniziare.');
-      return;
-    }
-    onStart(workout);
+    if (workout.exercises.length === 0) return;
+    const updated = buildUpdatedWorkout();
+    onSave(updated);
+    onStart(updated);
   };
 
   return (
@@ -136,18 +145,20 @@ export function WorkoutEditor({
       <main className="flex-1 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-3 mb-6">
+          <div className="flex flex-wrap gap-3 mb-2">
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="text-lg py-6 px-6">
                   + Aggiungi Esercizio
                 </Button>
               </DialogTrigger>
-              <ExerciseFormDialog
-                exercise={null}
-                onSave={handleAddExercise}
-                onClose={() => setIsAddDialogOpen(false)}
-              />
+              {isAddDialogOpen && (
+                <ExerciseFormDialog
+                  exercise={null}
+                  onSave={handleAddExercise}
+                  onClose={() => setIsAddDialogOpen(false)}
+                />
+              )}
             </Dialog>
 
             <Button
@@ -166,6 +177,10 @@ export function WorkoutEditor({
               className="hidden"
             />
           </div>
+
+          {csvError && (
+            <p className="text-sm text-destructive mb-4">{csvError}</p>
+          )}
 
           {/* Exercise list */}
           {workout.exercises.length === 0 ? (
@@ -215,7 +230,7 @@ export function WorkoutEditor({
                           )}
                         </Dialog>
                         <Button
-                          onClick={() => handleDeleteExercise(exercise.id)}
+                          onClick={() => handleDeleteExercise(exercise)}
                           variant="destructive"
                           size="sm"
                           className="py-5"
@@ -273,12 +288,13 @@ function ExerciseFormDialog({ exercise, onSave, onClose }: ExerciseFormDialogPro
     restBetweenSeries: exercise?.restBetweenSeries.raw || '',
     restBetweenExercises: exercise?.restBetweenExercises.raw || '',
   });
+  const [nameError, setNameError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!form.name.trim()) {
-      alert('Inserisci il nome dell\'esercizio');
+      setNameError(true);
       return;
     }
 
@@ -308,10 +324,18 @@ function ExerciseFormDialog({ exercise, onSave, onClose }: ExerciseFormDialogPro
           <Input
             id="name"
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, name: e.target.value });
+              if (e.target.value.trim()) setNameError(false);
+            }}
             placeholder="es. Push-up"
             className="mt-1 py-3 text-lg"
           />
+          {nameError && (
+            <p className="text-sm text-destructive mt-1">
+              Inserisci il nome dell'esercizio
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
