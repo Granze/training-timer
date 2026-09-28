@@ -23,20 +23,4 @@ export interface Workout {
   updatedAt: string;
 }
 
-// During execution, concrete values picked from ranges
-export interface ExerciseExecution {
-  exercise: Exercise;
-  currentSeries: number;
-  totalSeries: number;
-  workTimeSec: number;
-  restSeriesSec: number;
-  restExerciseSec: number;
-}
-
 export type AppScreen = 'home' | 'editor' | 'player';
-
-export interface AppState {
-  currentScreen: AppScreen;
-  currentWorkout: Workout | null;
-  workouts: Workout[];
-}

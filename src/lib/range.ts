@@ -33,19 +33,4 @@ export function getDefaultRangeValue(range: RangeValue): number {
   return range.max;
 }
 
-/**
- * Check if a range represents a valid positive number
- */
-export function isPositiveRange(range: RangeValue): boolean {
-  return range.max > 0;
-}
 
-/**
- * Format a range for display
- */
-export function formatRange(range: RangeValue): string {
-  if (range.min === range.max) {
-    return range.min.toString();
-  }
-  return `${range.min}-${range.max}`;
-}
