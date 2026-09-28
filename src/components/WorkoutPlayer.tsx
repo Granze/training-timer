@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Workout, Exercise } from '@/types';
+import { Workout, Exercise, RangeValue } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useTimer } from '@/hooks/useTimer';
 import { getDefaultRangeValue } from '@/lib/range';
 import { X, Trophy, Play, Check, Pause } from 'lucide-react';
 
 type PlayerPhase = 'exercise' | 'work-timer' | 'rest-series' | 'rest-exercise' | 'complete';
+
+const ZERO_RANGE: RangeValue = { min: 0, max: 0, raw: '0' };
+const DEFAULT_SERIES_RANGE: RangeValue = { min: 1, max: 1, raw: '1' };
 
 interface WorkoutPlayerProps {
   workout: Workout;
@@ -17,13 +20,13 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [currentSeries, setCurrentSeries] = useState(1);
   const [phase, setPhase] = useState<PlayerPhase>('exercise');
-  
-  const currentExercise = workout.exercises[exerciseIndex];
-  const totalSeries = getDefaultRangeValue(currentExercise.series);
-  const workTime = getDefaultRangeValue(currentExercise.workTime);
-  const restSeries = getDefaultRangeValue(currentExercise.restBetweenSeries);
-  const restExercise = getDefaultRangeValue(currentExercise.restBetweenExercises);
-  const isTimedExercise = currentExercise.repetitions.toLowerCase() === 'tempo' && workTime > 0;
+
+  const currentExercise = workout.exercises[exerciseIndex] as Exercise | undefined;
+  const totalSeries = Math.max(1, getDefaultRangeValue(currentExercise?.series ?? DEFAULT_SERIES_RANGE));
+  const workTime = getDefaultRangeValue(currentExercise?.workTime ?? ZERO_RANGE);
+  const restSeries = getDefaultRangeValue(currentExercise?.restBetweenSeries ?? ZERO_RANGE);
+  const restExercise = getDefaultRangeValue(currentExercise?.restBetweenExercises ?? ZERO_RANGE);
+  const isTimedExercise = currentExercise?.repetitions.toLowerCase() === 'tempo' && workTime > 0;
 
   const handleTimerComplete = useCallback(() => {
     playBeep();
@@ -34,67 +37,45 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
     onComplete: handleTimerComplete,
   });
 
-  // Move to next phase
-  const moveToNextPhase = useCallback(() => {
-    if (phase === 'exercise') {
-      // If it's a timed exercise, start work timer
-      if (isTimedExercise) {
-        setPhase('work-timer');
-        start(workTime);
-        return;
-      }
-      // Otherwise, user taps done, go to rest
+  // Advance the state machine after a phase finishes (user action, skip or timer end)
+  const advance = useCallback((finishedPhase: PlayerPhase) => {
+    if (finishedPhase === 'exercise' && isTimedExercise) {
+      setPhase('work-timer');
+      start(workTime);
+      return;
     }
-    
-    if (phase === 'exercise' || phase === 'work-timer') {
-      // Check if more series remaining
+
+    if (finishedPhase === 'exercise' || finishedPhase === 'work-timer') {
       if (currentSeries < totalSeries) {
         if (restSeries > 0) {
           setPhase('rest-series');
           start(restSeries);
         } else {
-          // No rest, go directly to next series
           setCurrentSeries((s) => s + 1);
           setPhase('exercise');
         }
-      } else {
-        // Last series of this exercise
-        if (exerciseIndex < workout.exercises.length - 1) {
-          if (restExercise > 0) {
-            setPhase('rest-exercise');
-            start(restExercise);
-          } else {
-            // No rest, go directly to next exercise
-            setExerciseIndex((i) => i + 1);
-            setCurrentSeries(1);
-            setPhase('exercise');
-          }
+      } else if (exerciseIndex < workout.exercises.length - 1) {
+        if (restExercise > 0) {
+          setPhase('rest-exercise');
+          start(restExercise);
         } else {
-          // Workout complete
-          setPhase('complete');
+          setExerciseIndex((i) => i + 1);
+          setCurrentSeries(1);
+          setPhase('exercise');
         }
+      } else {
+        setPhase('complete');
       }
+      return;
     }
-    
-    if (phase === 'rest-series') {
-      setCurrentSeries((s) => s + 1);
-      setPhase('exercise');
-    }
-    
-    if (phase === 'rest-exercise') {
-      setExerciseIndex((i) => i + 1);
-      setCurrentSeries(1);
-      setPhase('exercise');
-    }
-  }, [phase, currentSeries, totalSeries, exerciseIndex, workout.exercises.length, restSeries, restExercise, isTimedExercise, workTime, start]);
 
-  // Handle skip button during rest
-  const handleSkipRest = () => {
-    skip();
-    if (phase === 'rest-series') {
+    if (finishedPhase === 'rest-series') {
       setCurrentSeries((s) => s + 1);
       setPhase('exercise');
-    } else if (phase === 'rest-exercise') {
+      return;
+    }
+
+    if (finishedPhase === 'rest-exercise') {
       if (exerciseIndex < workout.exercises.length - 1) {
         setExerciseIndex((i) => i + 1);
         setCurrentSeries(1);
@@ -103,61 +84,41 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
         setPhase('complete');
       }
     }
-  };
+  }, [currentSeries, totalSeries, exerciseIndex, workout.exercises.length, restSeries, restExercise, isTimedExercise, workTime, start]);
 
   // Handle done button during exercise
   const handleDone = () => {
-    moveToNextPhase();
+    advance('exercise');
+  };
+
+  // Handle skip button during rest
+  const handleSkipRest = () => {
+    skip();
+    advance(phase);
   };
 
   // Auto-advance when timer completes
   useEffect(() => {
     if (time === 0 && !isRunning && (phase === 'work-timer' || phase === 'rest-series' || phase === 'rest-exercise')) {
       // Small delay before auto-advancing
-      const timeout = setTimeout(() => {
-        if (phase === 'work-timer') {
-          // After work timer, check for more series
-          if (currentSeries < totalSeries) {
-            if (restSeries > 0) {
-              setPhase('rest-series');
-              start(restSeries);
-            } else {
-              setCurrentSeries((s) => s + 1);
-              setPhase('exercise');
-            }
-          } else {
-            if (exerciseIndex < workout.exercises.length - 1) {
-              if (restExercise > 0) {
-                setPhase('rest-exercise');
-                start(restExercise);
-              } else {
-                setExerciseIndex((i) => i + 1);
-                setCurrentSeries(1);
-                setPhase('exercise');
-              }
-            } else {
-              setPhase('complete');
-            }
-          }
-        } else if (phase === 'rest-series') {
-          setCurrentSeries((s) => s + 1);
-          setPhase('exercise');
-        } else if (phase === 'rest-exercise') {
-          if (exerciseIndex < workout.exercises.length - 1) {
-            setExerciseIndex((i) => i + 1);
-            setCurrentSeries(1);
-            setPhase('exercise');
-          } else {
-            setPhase('complete');
-          }
-        }
-      }, 500);
-      
+      const timeout = setTimeout(() => advance(phase), 500);
       return () => clearTimeout(timeout);
     }
-  }, [time, isRunning, phase, currentSeries, totalSeries, exerciseIndex, workout.exercises.length, restSeries, restExercise, start]);
+  }, [time, isRunning, phase, advance]);
 
-  // Render based on phase
+  if (!currentExercise) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6">
+        <p className="text-xl text-muted-foreground mb-6">
+          Questo workout non contiene esercizi.
+        </p>
+        <Button onClick={onBack} size="lg" className="text-xl py-8 px-12">
+          Indietro
+        </Button>
+      </div>
+    );
+  }
+
   if (phase === 'complete') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
@@ -202,7 +163,7 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
             onDone={handleDone}
           />
         )}
-        
+
         {(phase === 'work-timer' || phase === 'rest-series' || phase === 'rest-exercise') && (
           <TimerDisplay
             time={time}
@@ -232,13 +193,13 @@ interface ExerciseDisplayProps {
 
 function ExerciseDisplay({ exercise, currentSeries, totalSeries, onDone }: ExerciseDisplayProps) {
   const isTimed = exercise.repetitions.toLowerCase() === 'tempo' && exercise.workTime.max > 0;
-  
+
   return (
     <div className="text-center w-full max-w-lg">
       <div className="mb-8">
         <div className="text-sm text-muted-foreground mb-2">Serie {currentSeries}/{totalSeries}</div>
         <h2 className="text-4xl sm:text-5xl font-bold mb-6">{exercise.name}</h2>
-        
+
         <div className="bg-muted rounded-2xl p-6 mb-8">
           {isTimed ? (
             <>
@@ -358,7 +319,7 @@ function TimerDisplay({
             strokeLinecap="round"
           />
         </svg>
-        
+
         {/* Timer content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-sm text-muted-foreground mb-1">{getPhaseLabel()}</div>
@@ -399,16 +360,20 @@ function playBeep() {
     const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
+
     oscillator.frequency.value = 880; // A5
     oscillator.type = 'sine';
-    
+
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-    
+
+    oscillator.onended = () => {
+      audioContext.close().catch(() => {});
+    };
+
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.5);
   } catch (e) {
