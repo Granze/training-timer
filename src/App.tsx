@@ -49,6 +49,17 @@ function App() {
     setCurrentScreen('home');
   };
 
+  // Persist every edit immediately, so nothing is lost if the tab is closed
+  const handleUpdateWorkout = (workout: Workout) => {
+    setCurrentWorkout(workout);
+    const exists = workouts.some(w => w.id === workout.id);
+    if (exists) {
+      updateWorkout(workout);
+    } else if (workout.exercises.length > 0) {
+      addWorkout(workout);
+    }
+  };
+
   const handleWorkoutComplete = () => {
     setCurrentWorkout(null);
     setCurrentScreen('home');
@@ -81,7 +92,7 @@ function App() {
           onSave={handleSaveWorkout}
           onStart={handleStartWorkout}
           onBack={handleBack}
-          onUpdate={setCurrentWorkout}
+          onUpdate={handleUpdateWorkout}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
