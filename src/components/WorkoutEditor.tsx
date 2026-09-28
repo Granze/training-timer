@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { parseCSV } from '@/lib/csv-parser';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { parseCSV, exercisesToCSV } from '@/lib/csv-parser';
 import { parseRangeValue } from '@/lib/range';
-import { Moon, Sun, Folder, Play } from 'lucide-react';
+import { Moon, Sun, Folder, Play, HelpCircle, Download } from 'lucide-react';
 
 interface WorkoutEditorProps {
   workout: Workout;
@@ -98,6 +99,19 @@ export function WorkoutEditor({
     }
   };
 
+  const handleExportCSV = () => {
+    if (workout.exercises.length === 0) return;
+    const csv = exercisesToCSV(workout.exercises);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const baseName = workout.name.trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '_') || 'workout';
+    link.href = url;
+    link.download = `${baseName}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const buildUpdatedWorkout = (): Workout => ({
     ...workout,
     name: workout.name.trim() || 'Workout senza nome',
@@ -169,6 +183,37 @@ export function WorkoutEditor({
             >
               <Folder className="w-5 h-5 mr-2" /> Importa CSV
             </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-lg"
+                  aria-label="Formato CSV"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm text-left">
+                <p className="font-semibold mb-1">Formato CSV</p>
+                <p className="mb-1">Intestazione obbligatoria, poi una riga per esercizio:</p>
+                <pre className="text-xs whitespace-pre-wrap bg-background/10 rounded p-2 mb-1">
+{`Esercizio,Serie,Ripetizioni,Tempo Lavoro (s),Recupero Serie (s),Recupero Esercizio (s)
+Push-up,3,8-12,30,60,90
+Plank,2,tempo,30-45,60,0`}
+                </pre>
+                <p>Valori singoli o range (es. 8-12). Usa "tempo" in Ripetizioni per esercizi a tempo. 0 = nessun recupero.</p>
+              </TooltipContent>
+            </Tooltip>
+            {workout.exercises.length > 0 && (
+              <Button
+                onClick={handleExportCSV}
+                variant="outline"
+                size="lg"
+                className="text-lg py-6 px-6"
+              >
+                <Download className="w-5 h-5 mr-2" /> Esporta CSV
+              </Button>
+            )}
             <input
               ref={fileInputRef}
               type="file"

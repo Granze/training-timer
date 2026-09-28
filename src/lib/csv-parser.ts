@@ -83,6 +83,41 @@ function mapHeaders(headers: string[]): Record<string, number> {
 }
 
 /**
+ * Escape a field for CSV output (quotes, commas and newlines)
+ */
+function escapeCSVField(field: string): string {
+  if (/[",\n\r]/.test(field)) {
+    return `"${field.replace(/"/g, '""')}"`;
+  }
+  return field;
+}
+
+/**
+ * Convert exercises to CSV format
+ */
+export function exercisesToCSV(exercises: Exercise[]): string {
+  const header = [
+    CSV_HEADERS.exercise,
+    CSV_HEADERS.series,
+    CSV_HEADERS.repetitions,
+    CSV_HEADERS.workTime,
+    CSV_HEADERS.restSeries,
+    CSV_HEADERS.restExercise,
+  ].map(escapeCSVField).join(',');
+
+  const rows = exercises.map(ex => [
+    ex.name,
+    ex.series.raw,
+    ex.repetitions,
+    ex.workTime.raw,
+    ex.restBetweenSeries.raw,
+    ex.restBetweenExercises.raw,
+  ].map(escapeCSVField).join(','));
+
+  return [header, ...rows].join('\n');
+}
+
+/**
  * Parse a CSV line handling quoted values and escaped quotes ("")
  */
 function parseCSVLine(line: string): string[] {
