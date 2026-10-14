@@ -1,4 +1,21 @@
 import { useState, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Workout, Exercise } from '@/types';
 import { Theme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
@@ -10,7 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { parseCSV, exercisesToCSV } from '@/lib/csv-parser';
 import { parseRangeValue } from '@/lib/range';
-import { Moon, Sun, Folder, Play, HelpCircle, Download } from 'lucide-react';
+import { Moon, Sun, Folder, Play, HelpCircle, Download, GripVertical } from 'lucide-react';
 
 interface WorkoutEditorProps {
   workout: Workout;
@@ -35,6 +52,29 @@ export function WorkoutEditor({
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleReorderExercise = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = workout.exercises.findIndex((e) => e.id === active.id);
+    const newIndex = workout.exercises.findIndex((e) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onUpdate({
+      ...workout,
+      exercises: arrayMove(workout.exercises, oldIndex, newIndex),
+    });
+  };
 
   const handleNameChange = (name: string) => {
     onUpdate({ ...workout, name });
@@ -236,57 +276,30 @@ Plank,2,tempo,30-45,60,0`}
             </div>
           ) : (
             <ScrollArea className="h-[calc(100vh-340px)]">
-              <div className="grid gap-3">
-                {workout.exercises.map((exercise, index) => (
-                  <Card key={exercise.id}>
-                    <CardHeader className="pb-2 pt-4">
-                      <CardTitle className="text-lg">
-                        {index + 1}. {exercise.name}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-4">
-                      <div className="text-sm text-muted-foreground mb-3">
-                        {exercise.series.raw} serie × {exercise.repetitions} rep
-                        {exercise.workTime.max > 0 && (
-                          <span> • Lavoro: {exercise.workTime.raw}s</span>
-                        )}
-                        {exercise.restBetweenSeries.max > 0 && (
-                          <span> • Recupero: {exercise.restBetweenSeries.raw}s</span>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              onClick={() => setEditingExercise(exercise)}
-                              variant="outline"
-                              size="sm"
-                              className="py-5"
-                            >
-                              Modifica
-                            </Button>
-                          </DialogTrigger>
-                          {editingExercise?.id === exercise.id && (
-                            <ExerciseFormDialog
-                              exercise={editingExercise}
-                              onSave={handleUpdateExercise}
-                              onClose={() => setEditingExercise(null)}
-                            />
-                          )}
-                        </Dialog>
-                        <Button
-                          onClick={() => handleDeleteExercise(exercise)}
-                          variant="destructive"
-                          size="sm"
-                          className="py-5"
-                        >
-                          Elimina
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleReorderExercise}
+              >
+                <SortableContext
+                  items={workout.exercises.map((e) => e.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="grid gap-3">
+                    {workout.exercises.map((exercise, index) => (
+                      <SortableExerciseCard
+                        key={exercise.id}
+                        exercise={exercise}
+                        index={index}
+                        editingExercise={editingExercise}
+                        onEdit={setEditingExercise}
+                        onUpdate={handleUpdateExercise}
+                        onDelete={handleDeleteExercise}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </ScrollArea>
           )}
         </div>
@@ -314,6 +327,101 @@ Plank,2,tempo,30-45,60,0`}
         </div>
       </footer>
     </div>
+  );
+}
+
+// Sortable Exercise Card Component
+interface SortableExerciseCardProps {
+  exercise: Exercise;
+  index: number;
+  editingExercise: Exercise | null;
+  onEdit: (exercise: Exercise | null) => void;
+  onUpdate: (exercise: Exercise) => void;
+  onDelete: (exercise: Exercise) => void;
+}
+
+function SortableExerciseCard({
+  exercise,
+  index,
+  editingExercise,
+  onEdit,
+  onUpdate,
+  onDelete,
+}: SortableExerciseCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: exercise.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className={`relative${isDragging ? ' opacity-70' : ''}`}>
+      <CardHeader className="pb-2 pt-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground p-2 -ml-2 min-w-11 min-h-11 flex items-center justify-center"
+            aria-label={`Trascina per riordinare ${exercise.name}`}
+          >
+            <GripVertical className="w-5 h-5" />
+          </button>
+          <CardTitle className="text-lg">
+            {index + 1}. {exercise.name}
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div className="text-sm text-muted-foreground mb-3">
+          {exercise.series.raw} serie × {exercise.repetitions} rep
+          {exercise.workTime.max > 0 && (
+            <span> • Lavoro: {exercise.workTime.raw}s</span>
+          )}
+          {exercise.restBetweenSeries.max > 0 && (
+            <span> • Recupero: {exercise.restBetweenSeries.raw}s</span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => onEdit(exercise)}
+                variant="outline"
+                size="sm"
+                className="py-5"
+              >
+                Modifica
+              </Button>
+            </DialogTrigger>
+            {editingExercise?.id === exercise.id && (
+              <ExerciseFormDialog
+                exercise={editingExercise}
+                onSave={onUpdate}
+                onClose={() => onEdit(null)}
+              />
+            )}
+          </Dialog>
+          <Button
+            onClick={() => onDelete(exercise)}
+            variant="destructive"
+            size="sm"
+            className="py-5"
+          >
+            Elimina
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
