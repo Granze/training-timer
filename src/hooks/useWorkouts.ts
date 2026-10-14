@@ -23,7 +23,8 @@ function isValidExercise(value: unknown): value is Exercise {
     isValidRangeValue(e.series) &&
     isValidRangeValue(e.workTime) &&
     isValidRangeValue(e.restBetweenSeries) &&
-    isValidRangeValue(e.restBetweenExercises)
+    isValidRangeValue(e.restBetweenExercises) &&
+    (e.note === undefined || typeof e.note === 'string')
   );
 }
 

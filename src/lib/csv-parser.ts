@@ -9,6 +9,7 @@ const CSV_HEADERS = {
   workTime: 'Tempo Lavoro (s)',
   restSeries: 'Recupero Serie (s)',
   restExercise: 'Recupero Esercizio (s)',
+  note: 'Note',
 };
 
 /**
@@ -51,6 +52,7 @@ export function parseCSV(csvContent: string): Exercise[] {
       workTime: parseRangeValue(values[headerMap.workTime] || '0'),
       restBetweenSeries: parseRangeValue(values[headerMap.restSeries] || '0'),
       restBetweenExercises: parseRangeValue(values[headerMap.restExercise] || '0'),
+      note: values[headerMap.note]?.trim() || undefined,
     };
 
     exercises.push(exercise);
@@ -77,6 +79,7 @@ function mapHeaders(headers: string[]): Record<string, number> {
     else if (trimmed === CSV_HEADERS.workTime) map.workTime = index;
     else if (trimmed === CSV_HEADERS.restSeries) map.restSeries = index;
     else if (trimmed === CSV_HEADERS.restExercise) map.restExercise = index;
+    else if (trimmed === CSV_HEADERS.note) map.note = index;
   });
 
   return map;
@@ -103,6 +106,7 @@ export function exercisesToCSV(exercises: Exercise[]): string {
     CSV_HEADERS.workTime,
     CSV_HEADERS.restSeries,
     CSV_HEADERS.restExercise,
+    CSV_HEADERS.note,
   ].map(escapeCSVField).join(',');
 
   const rows = exercises.map(ex => [
@@ -112,6 +116,7 @@ export function exercisesToCSV(exercises: Exercise[]): string {
     ex.workTime.raw,
     ex.restBetweenSeries.raw,
     ex.restBetweenExercises.raw,
+    ex.note ?? '',
   ].map(escapeCSVField).join(','));
 
   return [header, ...rows].join('\n');

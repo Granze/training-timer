@@ -13,6 +13,7 @@ export interface Exercise {
   workTime: RangeValue;      // Tempo Lavoro (s) - e.g. 24-36
   restBetweenSeries: RangeValue;    // Recupero Serie (s)
   restBetweenExercises: RangeValue; // Recupero Esercizio (s)
+  note?: string;             // Nota libera - e.g. peso usato
 }
 
 export interface Workout {

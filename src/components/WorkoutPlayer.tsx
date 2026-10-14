@@ -226,6 +226,10 @@ function ExerciseDisplay({ exercise, currentSeries, totalSeries, onDone }: Exerc
             </>
           )}
         </div>
+
+        {exercise.note && (
+          <p className="text-lg text-muted-foreground italic">{exercise.note}</p>
+        )}
       </div>
 
       <Button
@@ -307,6 +311,9 @@ function TimerDisplay({
           {phase !== 'work-timer' && `Serie ${currentSeries}/${totalSeries}`}
         </div>
         <h2 className="text-2xl font-bold">{exercise.name}</h2>
+        {exercise.note && phase !== 'rest-exercise' && (
+          <p className="text-sm text-muted-foreground italic">{exercise.note}</p>
+        )}
       </div>
 
       <div className="relative mb-8">
@@ -381,6 +388,9 @@ function NextExerciseCard({ exercise }: { exercise: Exercise }) {
       <span className="text-sm text-muted-foreground">
         {exercise.series.raw} serie × {isTimed ? `${exercise.workTime.raw}s` : exercise.repetitions}
       </span>
+      {exercise.note && (
+        <span className="text-sm text-muted-foreground italic">{exercise.note}</span>
+      )}
     </div>
   );
 }

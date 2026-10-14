@@ -237,11 +237,11 @@ export function WorkoutEditor({
                 <p className="font-semibold mb-1">Formato CSV</p>
                 <p className="mb-1">Intestazione obbligatoria, poi una riga per esercizio:</p>
                 <pre className="text-xs whitespace-pre-wrap bg-background/10 rounded p-2 mb-1">
-{`Esercizio,Serie,Ripetizioni,Tempo Lavoro (s),Recupero Serie (s),Recupero Esercizio (s)
-Push-up,3,8-12,30,60,90
+{`Esercizio,Serie,Ripetizioni,Tempo Lavoro (s),Recupero Serie (s),Recupero Esercizio (s),Note
+Push-up,3,8-12,30,60,90,Peso: 20kg
 Plank,2,tempo,30-45,60,0`}
                 </pre>
-                <p>Valori singoli o range (es. 8-12). Usa "tempo" in Ripetizioni per esercizi a tempo. 0 = nessun recupero.</p>
+                <p>Valori singoli o range (es. 8-12). Usa "tempo" in Ripetizioni per esercizi a tempo. 0 = nessun recupero. La colonna Note è opzionale.</p>
               </TooltipContent>
             </Tooltip>
             {workout.exercises.length > 0 && (
@@ -391,6 +391,11 @@ function SortableExerciseCard({
             <span> • Recupero: {exercise.restBetweenSeries.raw}s</span>
           )}
         </div>
+        {exercise.note && (
+          <div className="text-sm text-muted-foreground italic truncate mb-3 -mt-2">
+            {exercise.note}
+          </div>
+        )}
         <div className="flex gap-2">
           <Dialog>
             <DialogTrigger asChild>
@@ -440,6 +445,7 @@ function ExerciseFormDialog({ exercise, onSave, onClose }: ExerciseFormDialogPro
     workTime: exercise?.workTime.raw || '',
     restBetweenSeries: exercise?.restBetweenSeries.raw || '',
     restBetweenExercises: exercise?.restBetweenExercises.raw || '',
+    note: exercise?.note || '',
   });
   const [nameError, setNameError] = useState(false);
 
@@ -459,6 +465,7 @@ function ExerciseFormDialog({ exercise, onSave, onClose }: ExerciseFormDialogPro
       workTime: parseRangeValue(form.workTime || '0'),
       restBetweenSeries: parseRangeValue(form.restBetweenSeries || '0'),
       restBetweenExercises: parseRangeValue(form.restBetweenExercises || '0'),
+      note: form.note.trim() || undefined,
     };
 
     onSave(newExercise);
@@ -546,6 +553,17 @@ function ExerciseFormDialog({ exercise, onSave, onClose }: ExerciseFormDialogPro
               className="mt-1 py-3 text-lg"
             />
           </div>
+        </div>
+
+        <div>
+          <Label htmlFor="note" className="text-base">Nota</Label>
+          <Input
+            id="note"
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+            placeholder="es. Peso: 20kg"
+            className="mt-1 py-3 text-lg"
+          />
         </div>
 
         <div className="flex gap-3 pt-4">
