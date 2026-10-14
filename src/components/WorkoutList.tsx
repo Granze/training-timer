@@ -1,9 +1,12 @@
-import { Exercise, Workout } from '@/types';
+import { useState } from 'react';
+import { Workout } from '@/types';
 import { Theme } from '@/hooks/useTheme';
+import { buildShareUrl } from '@/lib/share';
 import { Button } from '@/components/ui/button';
+import { ExerciseSummaryList } from '@/components/ExerciseSummaryList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Moon, Sun, Play, Trash2 } from 'lucide-react';
+import { Moon, Sun, Play, Trash2, Share2, Check } from 'lucide-react';
 
 interface WorkoutListProps {
   workouts: Workout[];
@@ -24,6 +27,30 @@ export function WorkoutList({
   theme,
   onToggleTheme,
 }: WorkoutListProps) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleShare = async (workout: Workout) => {
+    const { url, isLong } = buildShareUrl(workout);
+    if (isLong) {
+      window.alert('Attenzione: il link è molto lungo e alcune app potrebbero troncarlo.');
+    }
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Workout: ${workout.name}`, url });
+        return;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(workout.id);
+      setTimeout(() => setCopiedId(current => (current === workout.id ? null : current)), 2000);
+    } catch {
+      window.prompt('Copia il link del workout:', url);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('it-IT', {
@@ -31,19 +58,6 @@ export function WorkoutList({
       month: 'short',
       year: 'numeric',
     });
-  };
-
-  const formatExerciseSummary = (exercise: Exercise) => {
-    const isTempo = exercise.repetitions.toLowerCase() === 'tempo';
-    const isTimed = isTempo && exercise.workTime.max > 0;
-    const rest =
-      exercise.restBetweenSeries.max > 0
-        ? exercise.restBetweenSeries
-        : exercise.restBetweenExercises.max > 0
-          ? exercise.restBetweenExercises
-          : null;
-    const reps = isTimed ? `${exercise.workTime.raw}s` : isTempo ? 'a tempo' : exercise.repetitions;
-    return `${exercise.series.raw}×${reps}${rest ? ` • ${rest.raw}s` : ''}`;
   };
 
   return (
@@ -102,24 +116,7 @@ export function WorkoutList({
                     </CardHeader>
                     <CardContent>
                       {workout.exercises.length > 0 && (
-                        <ol className="mb-4 divide-y divide-border/60">
-                          {workout.exercises.map((exercise, index) => (
-                            <li
-                              key={exercise.id}
-                              className="flex items-baseline justify-between gap-3 py-1.5"
-                            >
-                              <span className="text-sm font-medium truncate min-w-0">
-                                <span className="text-xs text-muted-foreground mr-2 tabular-nums">
-                                  {index + 1}.
-                                </span>
-                                {exercise.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                                {formatExerciseSummary(exercise)}
-                              </span>
-                            </li>
-                          ))}
-                        </ol>
+                        <ExerciseSummaryList exercises={workout.exercises} />
                       )}
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -138,6 +135,20 @@ export function WorkoutList({
                           className="flex-1 min-w-[120px] text-lg py-6"
                         >
                           Modifica
+                        </Button>
+                        <Button
+                          onClick={() => handleShare(workout)}
+                          variant="outline"
+                          size="lg"
+                          className="text-lg py-6 px-6"
+                          title="Condividi workout tramite link"
+                          aria-label="Condividi workout tramite link"
+                        >
+                          {copiedId === workout.id ? (
+                            <Check className="w-5 h-5" />
+                          ) : (
+                            <Share2 className="w-5 h-5" />
+                          )}
                         </Button>
                         <Button
                           onClick={() => {

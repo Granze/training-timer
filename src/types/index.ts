@@ -24,4 +24,4 @@ export interface Workout {
   updatedAt: string;
 }
 
-export type AppScreen = 'home' | 'editor' | 'player';
+export type AppScreen = 'home' | 'editor' | 'player' | 'share';

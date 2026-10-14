@@ -5,12 +5,26 @@ import { useTheme } from '@/hooks/useTheme';
 import { WorkoutList } from '@/components/WorkoutList';
 import { WorkoutEditor } from '@/components/WorkoutEditor';
 import { WorkoutPlayer } from '@/components/WorkoutPlayer';
+import { SharedWorkout } from '@/components/SharedWorkout';
+import { hasShareHash, getSharedWorkoutFromHash } from '@/lib/share';
 
 function App() {
   const { workouts, isLoaded, addWorkout, updateWorkout, deleteWorkout } = useWorkouts();
   const { theme, toggleTheme, isLoaded: themeLoaded } = useTheme();
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
+  // undefined = no share link, null = invalid share link, Workout = valid shared workout
+  const [sharedWorkout, setSharedWorkout] = useState<Workout | null | undefined>(() =>
+    hasShareHash(window.location.hash)
+      ? getSharedWorkoutFromHash(window.location.hash)
+      : undefined
+  );
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() =>
+    sharedWorkout !== undefined ? 'share' : 'home'
+  );
   const [currentWorkout, setCurrentWorkout] = useState<Workout | null>(null);
+
+  const clearShareHash = () => {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  };
 
   const handleNewWorkout = () => {
     const newWorkout: Workout = {
@@ -65,6 +79,29 @@ function App() {
     setCurrentScreen('home');
   };
 
+  const handleSaveShared = (workout: Workout) => {
+    if (!workouts.some(w => w.id === workout.id)) {
+      addWorkout({ ...workout, updatedAt: new Date().toISOString() });
+    }
+  };
+
+  const handleStartShared = (workout: Workout) => {
+    const existing = workouts.find(w => w.id === workout.id);
+    setCurrentWorkout(existing ?? workout);
+    clearShareHash();
+    setSharedWorkout(undefined);
+    setCurrentScreen('player');
+  };
+
+  const handleBackFromShare = () => {
+    clearShareHash();
+    setSharedWorkout(undefined);
+    setCurrentScreen('home');
+  };
+
+  const isSharedAlreadySaved =
+    sharedWorkout != null && workouts.some(w => w.id === sharedWorkout.id);
+
   if (!isLoaded || !themeLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -102,6 +139,17 @@ function App() {
           workout={currentWorkout}
           onComplete={handleWorkoutComplete}
           onBack={handleBack}
+        />
+      )}
+      {currentScreen === 'share' && (
+        <SharedWorkout
+          workout={sharedWorkout ?? null}
+          alreadySaved={isSharedAlreadySaved}
+          onStart={handleStartShared}
+          onSave={handleSaveShared}
+          onBack={handleBackFromShare}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
       )}
     </div>
