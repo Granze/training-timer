@@ -10,6 +10,10 @@ type PlayerPhase = 'exercise' | 'work-timer' | 'rest-series' | 'rest-exercise' |
 const ZERO_RANGE: RangeValue = { min: 0, max: 0, raw: '0' };
 const DEFAULT_SERIES_RANGE: RangeValue = { min: 1, max: 1, raw: '1' };
 
+function isTimedExercise(exercise: Exercise): boolean {
+  return exercise.repetitions.toLowerCase() === 'tempo' && exercise.workTime.max > 0;
+}
+
 interface WorkoutPlayerProps {
   workout: Workout;
   onComplete: () => void;
@@ -26,7 +30,15 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
   const workTime = getDefaultRangeValue(currentExercise?.workTime ?? ZERO_RANGE);
   const restSeries = getDefaultRangeValue(currentExercise?.restBetweenSeries ?? ZERO_RANGE);
   const restExercise = getDefaultRangeValue(currentExercise?.restBetweenExercises ?? ZERO_RANGE);
-  const isTimedExercise = currentExercise?.repetitions.toLowerCase() === 'tempo' && workTime > 0;
+  const isTimed = currentExercise ? isTimedExercise(currentExercise) : false;
+
+  const nextExerciseCandidate = workout.exercises[exerciseIndex + 1] as Exercise | undefined;
+  const nextExercise =
+    nextExerciseCandidate !== undefined &&
+    (phase === 'rest-exercise' ||
+      (phase === 'rest-series' && currentSeries === totalSeries && restExercise === 0))
+      ? nextExerciseCandidate
+      : undefined;
 
   const handleTimerComplete = useCallback(() => {
     playBeep();
@@ -39,7 +51,7 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
 
   // Advance the state machine after a phase finishes (user action, skip or timer end)
   const advance = useCallback((finishedPhase: PlayerPhase) => {
-    if (finishedPhase === 'exercise' && isTimedExercise) {
+    if (finishedPhase === 'exercise' && isTimed) {
       setPhase('work-timer');
       start(workTime);
       return;
@@ -84,7 +96,7 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
         setPhase('complete');
       }
     }
-  }, [currentSeries, totalSeries, exerciseIndex, workout.exercises.length, restSeries, restExercise, isTimedExercise, workTime, start]);
+  }, [currentSeries, totalSeries, exerciseIndex, workout.exercises.length, restSeries, restExercise, isTimed, workTime, start]);
 
   // Handle done button during exercise
   const handleDone = () => {
@@ -176,6 +188,7 @@ export function WorkoutPlayer({ workout, onComplete, onBack }: WorkoutPlayerProp
             onPause={pause}
             onResume={resume}
             onSkip={handleSkipRest}
+            nextExercise={nextExercise}
           />
         )}
       </main>
@@ -192,7 +205,7 @@ interface ExerciseDisplayProps {
 }
 
 function ExerciseDisplay({ exercise, currentSeries, totalSeries, onDone }: ExerciseDisplayProps) {
-  const isTimed = exercise.repetitions.toLowerCase() === 'tempo' && exercise.workTime.max > 0;
+  const isTimed = isTimedExercise(exercise);
 
   return (
     <div className="text-center w-full max-w-lg">
@@ -238,6 +251,7 @@ interface TimerDisplayProps {
   onPause: () => void;
   onResume: () => void;
   onSkip: () => void;
+  nextExercise?: Exercise;
 }
 
 function TimerDisplay({
@@ -251,6 +265,7 @@ function TimerDisplay({
   onPause,
   onResume,
   onSkip,
+  nextExercise,
 }: TimerDisplayProps) {
   const getPhaseLabel = () => {
     switch (phase) {
@@ -350,6 +365,22 @@ function TimerDisplay({
           {isPaused ? <><Play className="w-5 h-5 mr-2" /> Riprendi</> : <><Pause className="w-5 h-5 mr-2" /> Pausa</>}
         </Button>
       </div>
+
+      {nextExercise && <NextExerciseCard exercise={nextExercise} />}
+    </div>
+  );
+}
+
+function NextExerciseCard({ exercise }: { exercise: Exercise }) {
+  const isTimed = isTimedExercise(exercise);
+
+  return (
+    <div className="bg-muted rounded-xl px-4 py-3 mt-6 flex items-baseline justify-center gap-2 flex-wrap">
+      <span className="text-sm text-muted-foreground">PROSSIMO:</span>
+      <span className="text-lg font-bold">{exercise.name}</span>
+      <span className="text-sm text-muted-foreground">
+        {exercise.series.raw} serie × {isTimed ? `${exercise.workTime.raw}s` : exercise.repetitions}
+      </span>
     </div>
   );
 }
