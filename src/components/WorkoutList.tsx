@@ -1,4 +1,4 @@
-import { Workout } from '@/types';
+import { Exercise, Workout } from '@/types';
 import { Theme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,19 @@ export function WorkoutList({
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  const formatExerciseSummary = (exercise: Exercise) => {
+    const isTempo = exercise.repetitions.toLowerCase() === 'tempo';
+    const isTimed = isTempo && exercise.workTime.max > 0;
+    const rest =
+      exercise.restBetweenSeries.max > 0
+        ? exercise.restBetweenSeries
+        : exercise.restBetweenExercises.max > 0
+          ? exercise.restBetweenExercises
+          : null;
+    const reps = isTimed ? `${exercise.workTime.raw}s` : isTempo ? 'a tempo' : exercise.repetitions;
+    return `${exercise.series.raw}×${reps}${rest ? ` • ${rest.raw}s` : ''}`;
   };
 
   return (
@@ -88,6 +101,26 @@ export function WorkoutList({
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {workout.exercises.length > 0 && (
+                        <ol className="mb-4 divide-y divide-border/60">
+                          {workout.exercises.map((exercise, index) => (
+                            <li
+                              key={exercise.id}
+                              className="flex items-baseline justify-between gap-3 py-1.5"
+                            >
+                              <span className="text-sm font-medium truncate min-w-0">
+                                <span className="text-xs text-muted-foreground mr-2 tabular-nums">
+                                  {index + 1}.
+                                </span>
+                                {exercise.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                                {formatExerciseSummary(exercise)}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         <Button
                           onClick={() => onStartWorkout(workout)}
