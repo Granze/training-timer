@@ -5,6 +5,7 @@ import { ExerciseSummaryList } from '@/components/ExerciseSummaryList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Moon, Sun, Play, Save, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SharedWorkoutProps {
   workout: Workout | null;
@@ -96,7 +97,10 @@ export function SharedWorkout({
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => onSave(workout)}
+                      onClick={() => {
+                        onSave(workout);
+                        toast.success('Workout salvato nella tua libreria');
+                      }}
                       variant="outline"
                       size="lg"
                       className="flex-1 min-w-[120px] text-lg py-6"

@@ -7,9 +7,10 @@ import { WorkoutEditor } from '@/components/WorkoutEditor';
 import { WorkoutPlayer } from '@/components/WorkoutPlayer';
 import { SharedWorkout } from '@/components/SharedWorkout';
 import { hasShareHash, getSharedWorkoutFromHash } from '@/lib/share';
+import { Toaster } from 'sonner';
 
 function App() {
-  const { workouts, isLoaded, addWorkout, updateWorkout, deleteWorkout } = useWorkouts();
+  const { workouts, isLoaded, addWorkout, updateWorkout, deleteWorkout, restoreWorkout } = useWorkouts();
   const { theme, toggleTheme, isLoaded: themeLoaded } = useTheme();
   // undefined = no share link, null = invalid share link, Workout = valid shared workout
   const [sharedWorkout, setSharedWorkout] = useState<Workout | null | undefined>(() =>
@@ -118,6 +119,7 @@ function App() {
           onNewWorkout={handleNewWorkout}
           onEditWorkout={handleEditWorkout}
           onDeleteWorkout={deleteWorkout}
+          onRestoreWorkout={restoreWorkout}
           onStartWorkout={handleStartWorkout}
           theme={theme}
           onToggleTheme={toggleTheme}
@@ -152,6 +154,7 @@ function App() {
           onToggleTheme={toggleTheme}
         />
       )}
+      <Toaster theme={theme} position="bottom-center" richColors />
     </div>
   );
 }

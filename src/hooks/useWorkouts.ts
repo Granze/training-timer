@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Workout } from '@/types';
 import { isValidWorkout } from '@/lib/validation';
+import { toast } from 'sonner';
 
 const STORAGE_KEY = 'training-timer-workouts';
 
@@ -35,6 +36,9 @@ export function useWorkouts() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
       } catch (error) {
         console.error('Failed to save workouts to localStorage:', error);
+        toast.error('Impossibile salvare i dati: storage non disponibile o spazio esaurito.', {
+          id: 'workouts-storage-error',
+        });
       }
     }
   }, [workouts, isLoaded]);
@@ -57,11 +61,21 @@ export function useWorkouts() {
     setWorkouts(prev => prev.filter(w => w.id !== id));
   }, []);
 
+  const restoreWorkout = useCallback((workout: Workout, index: number) => {
+    setWorkouts(prev => {
+      if (prev.some(w => w.id === workout.id)) return prev;
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, workout);
+      return next;
+    });
+  }, []);
+
   return {
     workouts,
     isLoaded,
     addWorkout,
     updateWorkout,
     deleteWorkout,
+    restoreWorkout,
   };
 }

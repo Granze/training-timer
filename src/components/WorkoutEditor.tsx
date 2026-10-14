@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { parseCSV, exercisesToCSV } from '@/lib/csv-parser';
 import { parseRangeValue } from '@/lib/range';
 import { Moon, Sun, Folder, Play, HelpCircle, Download, GripVertical } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface WorkoutEditorProps {
   workout: Workout;
@@ -50,7 +51,6 @@ export function WorkoutEditor({
 }: WorkoutEditorProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
-  const [csvError, setCsvError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
@@ -111,7 +111,6 @@ export function WorkoutEditor({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setCsvError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -121,15 +120,20 @@ export function WorkoutEditor({
           ...workout,
           exercises: [...workout.exercises, ...exercises],
         });
+        toast.success(
+          exercises.length === 1
+            ? '1 esercizio importato'
+            : `${exercises.length} esercizi importati`
+        );
       } catch (error) {
         console.error('Failed to parse CSV:', error);
-        setCsvError(error instanceof Error
+        toast.error(error instanceof Error
           ? `Errore nel parsing del CSV: ${error.message}`
           : 'Errore nel parsing del CSV. Controlla il formato.');
       }
     };
     reader.onerror = () => {
-      setCsvError('Impossibile leggere il file selezionato.');
+      toast.error('Impossibile leggere il file selezionato.');
     };
     reader.readAsText(file);
 
@@ -150,6 +154,7 @@ export function WorkoutEditor({
     link.download = `${baseName}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    toast.success('CSV esportato');
   };
 
   const buildUpdatedWorkout = (): Workout => ({
@@ -160,6 +165,7 @@ export function WorkoutEditor({
 
   const handleSave = () => {
     onSave(buildUpdatedWorkout());
+    toast.success('Workout salvato');
   };
 
   const handleStart = () => {
@@ -262,10 +268,6 @@ Plank,2,tempo,30-45,60,0`}
               className="hidden"
             />
           </div>
-
-          {csvError && (
-            <p className="text-sm text-destructive mb-4">{csvError}</p>
-          )}
 
           {/* Exercise list */}
           {workout.exercises.length === 0 ? (

@@ -7,12 +7,14 @@ import { ExerciseSummaryList } from '@/components/ExerciseSummaryList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Moon, Sun, Play, Trash2, Share2, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface WorkoutListProps {
   workouts: Workout[];
   onNewWorkout: () => void;
   onEditWorkout: (workout: Workout) => void;
   onDeleteWorkout: (id: string) => void;
+  onRestoreWorkout: (workout: Workout, index: number) => void;
   onStartWorkout: (workout: Workout) => void;
   theme: Theme;
   onToggleTheme: () => void;
@@ -23,6 +25,7 @@ export function WorkoutList({
   onNewWorkout,
   onEditWorkout,
   onDeleteWorkout,
+  onRestoreWorkout,
   onStartWorkout,
   theme,
   onToggleTheme,
@@ -32,7 +35,7 @@ export function WorkoutList({
   const handleShare = async (workout: Workout) => {
     const { url, isLong } = buildShareUrl(workout);
     if (isLong) {
-      window.alert('Attenzione: il link è molto lungo e alcune app potrebbero troncarlo.');
+      toast.warning('Attenzione: il link è molto lungo e alcune app potrebbero troncarlo.');
     }
     if (navigator.share) {
       try {
@@ -46,8 +49,9 @@ export function WorkoutList({
       await navigator.clipboard.writeText(url);
       setCopiedId(workout.id);
       setTimeout(() => setCopiedId(current => (current === workout.id ? null : current)), 2000);
+      toast.success('Link copiato negli appunti');
     } catch {
-      window.prompt('Copia il link del workout:', url);
+      window.prompt('Copia automatica non riuscita. Copia manualmente il link del workout:', url);
     }
   };
 
@@ -105,7 +109,7 @@ export function WorkoutList({
           ) : (
             <ScrollArea className="h-[calc(100vh-180px)]">
               <div className="grid gap-4">
-                {workouts.map((workout) => (
+                {workouts.map((workout, index) => (
                   <Card key={workout.id} className="overflow-hidden">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-xl">{workout.name}</CardTitle>
@@ -152,9 +156,14 @@ export function WorkoutList({
                         </Button>
                         <Button
                           onClick={() => {
-                            if (window.confirm(`Eliminare il workout "${workout.name}"?`)) {
-                              onDeleteWorkout(workout.id);
-                            }
+                            onDeleteWorkout(workout.id);
+                            toast('Workout eliminato', {
+                              duration: 6000,
+                              action: {
+                                label: 'Annulla',
+                                onClick: () => onRestoreWorkout(workout, index),
+                              },
+                            });
                           }}
                           variant="destructive"
                           size="lg"
